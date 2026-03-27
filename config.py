@@ -284,6 +284,31 @@ class Choi2025NetworkConfig(NetworkConfig):
     )
 
 
+@dataclass
+class Choi2025PPONetworkConfig(NetworkConfig):
+    """Network config for PPO: 4x512 ReLU MLP."""
+
+    actor: ActorConfig = field(
+        default_factory=lambda: ActorConfig(
+            hidden_dims=[512, 512, 512, 512],
+            activation="relu",
+            ortho_init=True,
+            init_gain=0.01,
+            min_std=0.2,
+            max_std=1.0,
+            init_std=0.5,
+        )
+    )
+    critic: CriticConfig = field(
+        default_factory=lambda: CriticConfig(
+            hidden_dims=[512, 512, 512, 512],
+            activation="relu",
+            ortho_init=True,
+            init_gain=1.0,
+        )
+    )
+
+
 # ---------------------------------------------------------------------------
 # Logging configs
 # ---------------------------------------------------------------------------
@@ -378,7 +403,65 @@ class SACConfig:
 
 
 # ---------------------------------------------------------------------------
-# Top-level config
+# PPO training config
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class PPOConfig:
+    """PPO training configuration."""
+
+    name: str = "experiment"
+    seed: int = 42
+    device: str = "auto"
+
+    # Training duration
+    total_frames: int = 1_000_000
+    max_wall_time: Optional[float] = None
+    frames_per_batch: int = 4096
+
+    # Optimization
+    learning_rate: float = 3e-4
+    max_grad_norm: float = 0.5
+    weight_decay: float = 0.0
+    num_epochs: int = 10
+    mini_batch_size: int = 256
+
+    # PPO hyperparameters
+    clip_epsilon: float = 0.2
+    entropy_coef: float = 0.01
+    value_coef: float = 0.5
+    gamma: float = 0.99
+    gae_lambda: float = 0.95
+    normalize_advantage: bool = True
+
+    # Value function clipping
+    clip_value_loss: bool = True
+    value_clip_epsilon: float = 0.2
+
+    # Policy constraints
+    target_kl: Optional[float] = 0.01
+
+    # Learning rate schedule
+    lr_schedule: str = "linear"
+    lr_end: float = 1e-5
+
+    # Early stopping
+    patience_batches: int = 200
+
+    # Mixed precision
+    use_amp: bool = False
+
+    # Logging
+    log_interval: int = 1
+    save_interval: int = 100
+
+    # Parallelism
+    num_envs: int = 1
+
+
+# ---------------------------------------------------------------------------
+# Top-level configs
 # ---------------------------------------------------------------------------
 
 
@@ -425,6 +508,40 @@ class Choi2025Config(SACConfig):
         """Set name and experiment_name from task."""
         task = self.env.task.value if isinstance(self.env.task, TaskType) else self.env.task
         self.name = f"fixed_{task}_sac_lr1e3_{self.num_envs}envs"
+        self.experiment_name = self.name
+
+
+@dataclass
+class Choi2025PPOConfig(PPOConfig):
+    """Top-level config for soft manipulator PPO training."""
+
+    name: str = "choi2025_ppo"
+    experiment_name: str = "choi2025_ppo"
+
+    total_frames: int = 50_000_000
+    learning_rate: float = 1e-4
+    clip_epsilon: float = 0.2
+    num_epochs: int = 10
+    mini_batch_size: int = 1024
+    frames_per_batch: int = 8192
+    gae_lambda: float = 0.95
+    entropy_coef: float = 0.1
+    value_coef: float = 0.5
+    normalize_advantage: bool = True
+    patience_batches: int = 0
+
+    env: Choi2025EnvConfig = field(default_factory=Choi2025EnvConfig)
+    network: Choi2025PPONetworkConfig = field(default_factory=Choi2025PPONetworkConfig)
+    wandb: WandB = field(default_factory=lambda: WandB(project="choi2025-follow-target"))
+    output: Output = field(default_factory=Output)
+    console: Console = field(default_factory=Console)
+
+    num_envs: int = 500
+
+    def __post_init__(self):
+        """Set name and experiment_name from task."""
+        task = self.env.task.value if isinstance(self.env.task, TaskType) else self.env.task
+        self.name = f"fixed_{task}_ppo_lr1e4_{self.num_envs}envs"
         self.experiment_name = self.name
 
 

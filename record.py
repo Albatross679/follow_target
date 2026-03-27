@@ -26,6 +26,7 @@ from matplotlib.animation import FuncAnimation
 from choi2025_follow_target.config import (
     Choi2025Config,
     Choi2025NetworkConfig,
+    Choi2025PPONetworkConfig,
     TaskType,
     resolve_device,
 )
@@ -43,6 +44,13 @@ def parse_args() -> argparse.Namespace:
         default="follow_target",
         choices=[t.value for t in TaskType],
         help="Task type",
+    )
+    parser.add_argument(
+        "--algo",
+        type=str,
+        default="sac",
+        choices=["sac", "ppo"],
+        help="Algorithm used to train the checkpoint (sac or ppo)",
     )
     parser.add_argument(
         "--checkpoint", type=str, default=None, help="Path to trained .pt checkpoint"
@@ -84,7 +92,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_actor(checkpoint_path: str, env: SoftManipulatorEnv, device: str):
+def load_actor(checkpoint_path: str, env: SoftManipulatorEnv, device: str, algo: str = "sac"):
     """Reconstruct actor network and load trained weights."""
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
 
@@ -105,6 +113,8 @@ def load_actor(checkpoint_path: str, env: SoftManipulatorEnv, device: str):
 
     if network_cfg is not None:
         actor_cfg = network_cfg.actor
+    elif algo == "ppo":
+        actor_cfg = Choi2025PPONetworkConfig().actor
     else:
         actor_cfg = Choi2025NetworkConfig().actor
 
@@ -278,7 +288,7 @@ def main():
         output_path = Path(args.output)
     else:
         output_dir = Path(args.output_dir)
-        output_path = output_dir / f"fixed_{args.task}_sac.mp4"
+        output_path = output_dir / f"fixed_{args.task}_{args.algo}.mp4"
 
     config = Choi2025Config(seed=args.seed, device=device)
     config.env.task = TaskType(args.task)
@@ -291,7 +301,7 @@ def main():
 
     actor = None
     if args.checkpoint is not None:
-        actor = load_actor(args.checkpoint, env, device)
+        actor = load_actor(args.checkpoint, env, device, algo=args.algo)
     else:
         print("No checkpoint provided -- recording zero-action passive dynamics.")
 

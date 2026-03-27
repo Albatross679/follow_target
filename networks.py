@@ -1,10 +1,12 @@
-"""Actor and critic networks for SAC (self-contained).
+"""Actor and critic networks for SAC and PPO (self-contained).
 
 Provides:
     ActorNetwork     — MLP that outputs (mean, std) for Gaussian policy
-    QNetwork         — Q(s, a) network
-    TwinQNetwork     — Twin Q-networks for min-Q trick
+    CriticNetwork    — MLP for state-value V(s) (PPO)
+    QNetwork         — Q(s, a) network (SAC)
+    TwinQNetwork     — Twin Q-networks for min-Q trick (SAC)
     create_actor()   — Build TorchRL ProbabilisticActor
+    create_critic()  — Build TorchRL ValueOperator (PPO)
 """
 
 from typing import Optional, List, Tuple
@@ -16,6 +18,7 @@ from torchrl.modules import (
     ProbabilisticActor,
     TanhNormal,
     NormalParamExtractor,
+    ValueOperator,
 )
 try:
     from torchrl.data import BoundedTensorSpec, CompositeSpec
@@ -23,7 +26,7 @@ except ImportError:
     from torchrl.data import Bounded as BoundedTensorSpec, Composite as CompositeSpec
 from tensordict.nn import TensorDictModule, TensorDictSequential
 
-from choi2025_follow_target.config import ActorConfig
+from choi2025_follow_target.config import ActorConfig, CriticConfig
 
 
 # ---------------------------------------------------------------------------
@@ -122,7 +125,57 @@ class ActorNetwork(nn.Module):
 
 
 # ---------------------------------------------------------------------------
-# Critic
+# State-value critic (PPO)
+# ---------------------------------------------------------------------------
+
+
+class CriticNetwork(nn.Module):
+    """MLP network for state-value function V(s)."""
+
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dims: List[int],
+        num_outputs: int = 1,
+        activation: str = "tanh",
+        ortho_init: bool = True,
+        init_gain: float = 1.0,
+        use_layer_norm: bool = False,
+    ):
+        super().__init__()
+
+        layers = []
+        prev_dim = input_dim
+
+        for hidden_dim in hidden_dims:
+            layers.append(nn.Linear(prev_dim, hidden_dim))
+            if use_layer_norm:
+                layers.append(nn.LayerNorm(hidden_dim))
+            layers.append(get_activation(activation))
+            prev_dim = hidden_dim
+
+        self.mlp = nn.Sequential(*layers)
+        self.value_head = nn.Linear(prev_dim, num_outputs)
+
+        if ortho_init:
+            self._apply_ortho_init(init_gain)
+
+    def _apply_ortho_init(self, final_gain: float) -> None:
+        for module in self.mlp.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.orthogonal_(module.weight, gain=1.0)
+                nn.init.constant_(module.bias, 0.0)
+
+        nn.init.orthogonal_(self.value_head.weight, gain=final_gain)
+        nn.init.constant_(self.value_head.bias, 0.0)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        features = self.mlp(x)
+        return self.value_head(features)
+
+
+# ---------------------------------------------------------------------------
+# Q-value critic (SAC)
 # ---------------------------------------------------------------------------
 
 
@@ -269,3 +322,24 @@ def create_actor(
     )
 
     return actor
+
+
+def create_critic(
+    obs_dim: int,
+    config: Optional[CriticConfig] = None,
+    device: str = "cpu",
+) -> ValueOperator:
+    """Create TorchRL ValueOperator for state-value function V(s) (PPO)."""
+    config = config or CriticConfig()
+
+    net = CriticNetwork(
+        input_dim=obs_dim,
+        hidden_dims=config.hidden_dims,
+        num_outputs=1,
+        activation=config.activation,
+        ortho_init=config.ortho_init,
+        init_gain=config.init_gain,
+        use_layer_norm=config.use_layer_norm,
+    ).to(device)
+
+    return ValueOperator(module=net, in_keys=["observation"])
