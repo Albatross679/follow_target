@@ -60,15 +60,24 @@ def resolve_device(device: str = "auto") -> str:
 
 @dataclass
 class GeometryConfig:
-    """Snake body geometry."""
+    """Snake body geometry.
+
+    The rod is discretized into ``num_nodes`` points (vertices).
+    Segments = num_nodes - 1, bend springs = num_nodes - 2.
+
+    Changing num_nodes changes the observation dimension
+    (positions + velocities scale with num_nodes) and the
+    number of internal curvatures (num_nodes - 2).
+    The action dimension is independent (set by num_control_points).
+    """
 
     snake_length: float = 1.0
     snake_radius: float = 0.001
-    num_segments: int = 20
+    num_nodes: int = 21  # 21 nodes = 20 segments (paper default)
 
     @property
-    def num_nodes(self) -> int:
-        return self.num_segments + 1
+    def num_segments(self) -> int:
+        return self.num_nodes - 1
 
     @property
     def segment_length(self) -> float:
@@ -116,12 +125,12 @@ class Choi2025PhysicsConfig(PhysicsConfig):
     max_newton_iter_contact: int = 5
     max_newton_iter_noncontact: int = 2
 
-    # Override rod defaults
+    # Override rod defaults (21 nodes = 20 segments, matching paper)
     geometry: GeometryConfig = field(
         default_factory=lambda: GeometryConfig(
             snake_length=1.0,
             snake_radius=0.05,
-            num_segments=20,
+            num_nodes=21,
         )
     )
     dt: float = 0.05
