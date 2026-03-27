@@ -22,7 +22,9 @@ dependencies = [
 dev = ["pytest", "psutil"]
 
 [project.scripts]
-choi2025-train = "choi2025_follow_target.train:main"
+choi2025-train-sac = "choi2025_follow_target.train_sac:main"
+choi2025-train-ppo = "choi2025_follow_target.train_ppo:main"
+choi2025-train-mmrkhs = "choi2025_follow_target.train_mmrkhs:main"
 choi2025-record = "choi2025_follow_target.record:main"
 
 [tool.setuptools.packages.find]

@@ -3,9 +3,9 @@
 Self-contained — runs without any dependency on ``src/``.
 
 Usage:
-    python -m choi2025_follow_target.train --task follow_target --total-frames 5000000
-    python -m choi2025_follow_target.train --seed 0 --num-envs 32
-    python -m choi2025_follow_target.train --max-wall-time 30m
+    python -m choi2025_follow_target.train_sac --task follow_target --total-frames 5000000
+    python -m choi2025_follow_target.train_sac --seed 0 --num-envs 32
+    python -m choi2025_follow_target.train_sac --max-wall-time 30m
 """
 
 import argparse
@@ -29,7 +29,7 @@ from choi2025_follow_target.config import (
     Console,
 )
 from choi2025_follow_target.env import SoftManipulatorEnv
-from choi2025_follow_target.trainer import SACTrainer
+from choi2025_follow_target.trainer_sac import SACTrainer
 
 
 def _make_env(env_config, device):

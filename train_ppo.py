@@ -29,7 +29,7 @@ from choi2025_follow_target.config import (
     setup_run_dir,
 )
 from choi2025_follow_target.env import SoftManipulatorEnv
-from choi2025_follow_target.train import parse_wall_time
+from choi2025_follow_target.train_sac import parse_wall_time
 from choi2025_follow_target.trainer_ppo import PPOTrainer
 
 
