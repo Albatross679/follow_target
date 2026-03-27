@@ -58,37 +58,3 @@ def compute_follow_target_reward(
             "reward_improve": float(improvement_reward),
         }
     return total
-
-
-def compute_ik_reward(
-    tip_pos: np.ndarray,
-    tip_tangent: np.ndarray,
-    target_pos: np.ndarray,
-    target_orient: np.ndarray,
-) -> float:
-    """Reward for inverse kinematics (position + orientation)."""
-    pos_dist = np.linalg.norm(tip_pos - target_pos)
-    pos_reward = np.exp(-5.0 * pos_dist)
-
-    cos_sim = np.clip(np.dot(tip_tangent, target_orient), -1.0, 1.0)
-    orient_reward = (1.0 + cos_sim) / 2.0
-
-    return float(0.7 * pos_reward + 0.3 * orient_reward)
-
-
-def compute_obstacle_reward(
-    tip_pos: np.ndarray,
-    target_pos: np.ndarray,
-    prev_tip_pos: np.ndarray,
-    total_penetration: float,
-    contact_penalty: float = 10.0,
-) -> float:
-    """Reward for reaching target while avoiding obstacles."""
-    dist = np.linalg.norm(tip_pos - target_pos)
-    prev_dist = np.linalg.norm(prev_tip_pos - target_pos)
-
-    distance_reward = np.exp(-5.0 * dist)
-    improvement_bonus = 2.0 * (prev_dist - dist)
-    penalty = -contact_penalty * total_penetration
-
-    return float(distance_reward + improvement_bonus + penalty)

@@ -3,7 +3,7 @@
 Self-contained — runs without any dependency on ``src/``.
 
 Usage:
-    python -m choi2025_follow_target.train_sac --task follow_target --total-frames 5000000
+    python -m choi2025_follow_target.train_sac --total-frames 5000000
     python -m choi2025_follow_target.train_sac --seed 0 --num-envs 32
     python -m choi2025_follow_target.train_sac --max-wall-time 30m
 """
@@ -23,7 +23,6 @@ from torchrl.envs import RewardSum
 from choi2025_follow_target.config import (
     Choi2025Config,
     Choi2025EnvConfig,
-    TaskType,
     resolve_device,
     setup_run_dir,
     Console,
@@ -60,13 +59,6 @@ def parse_wall_time(s: str) -> float:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train soft manipulator SAC")
-    parser.add_argument(
-        "--task",
-        type=str,
-        default="follow_target",
-        choices=[t.value for t in TaskType],
-        help="Task type",
-    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--device", type=str, default="auto", help="Device (auto/cpu/cuda)")
     parser.add_argument(
@@ -89,7 +81,7 @@ def main():
 
     device = resolve_device(args.device)
 
-    env_config = Choi2025EnvConfig(task=TaskType(args.task), device=device)
+    env_config = Choi2025EnvConfig(device=device)
     config = Choi2025Config(seed=args.seed, device=device, env=env_config)
 
     if args.total_frames is not None:
@@ -131,7 +123,7 @@ def main():
         if config.max_wall_time is not None:
             mins = config.max_wall_time / 60
             wall_msg = f", max wall time {mins:.0f}min"
-        print(f"Training {args.task} with {config.total_frames} frames{wall_msg}")
+        print(f"Training follow_target with {config.total_frames} frames{wall_msg}")
         print(f"  Device: {device}")
         print(f"  Run directory: {run_dir}")
         results = trainer.train()

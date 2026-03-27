@@ -10,7 +10,6 @@ Usage:
     # With trained SAC policy
     python -m choi2025_follow_target.record \
         --checkpoint output/fixed_follow_target_sac/checkpoints/best.pt \
-        --task follow_target \
         --output media/choi2025/fixed_follow_target_sac.mp4
 """
 
@@ -27,7 +26,6 @@ from choi2025_follow_target.config import (
     Choi2025Config,
     Choi2025NetworkConfig,
     Choi2025PPONetworkConfig,
-    TaskType,
     resolve_device,
 )
 from choi2025_follow_target.env import SoftManipulatorEnv
@@ -37,13 +35,6 @@ from choi2025_follow_target.networks import create_actor
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Record DisMech soft manipulator rollout"
-    )
-    parser.add_argument(
-        "--task",
-        type=str,
-        default="follow_target",
-        choices=[t.value for t in TaskType],
-        help="Task type",
     )
     parser.add_argument(
         "--algo",
@@ -182,7 +173,7 @@ def collect_rollout(env, actor, max_steps, device):
     }
 
 
-def build_animation(rollouts, task, elevation, azimuth, fps, obstacles=None):
+def build_animation(rollouts, elevation, azimuth, fps):
     """Build a matplotlib FuncAnimation from collected rollout data."""
     all_positions = np.concatenate([r["positions"] for r in rollouts], axis=0)
     all_targets = np.concatenate([r["targets"] for r in rollouts], axis=0)
@@ -215,15 +206,6 @@ def build_animation(rollouts, task, elevation, azimuth, fps, obstacles=None):
     (tip_trail,) = ax.plot([], [], [], "-", color="#e31a1c", alpha=0.3, lw=1)
     (clamp_marker,) = ax.plot([], [], [], "D", color="#333333", ms=8, label="Clamp")
 
-    if obstacles is not None and len(obstacles.positions) > 0:
-        for obs_pos, obs_r in zip(obstacles.positions, obstacles.radii):
-            u = np.linspace(0, 2 * np.pi, 20)
-            v = np.linspace(0, np.pi, 15)
-            xs = obs_r * np.outer(np.cos(u), np.sin(v)) + obs_pos[0]
-            ys = obs_r * np.outer(np.sin(u), np.sin(v)) + obs_pos[1]
-            zs = obs_r * np.outer(np.ones_like(u), np.cos(v)) + obs_pos[2]
-            ax.plot_surface(xs, ys, zs, alpha=0.25, color="gray")
-
     info_text = ax.text2D(0.02, 0.95, "", transform=ax.transAxes, fontsize=9)
 
     ax.set_xlim(x_min, x_max)
@@ -232,7 +214,7 @@ def build_animation(rollouts, task, elevation, azimuth, fps, obstacles=None):
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
-    ax.set_title(f"Soft Manipulator \u2014 {task.value}")
+    ax.set_title("Soft Manipulator \u2014 follow_target")
     ax.legend(loc="upper right", fontsize=8)
 
     def _find_episode(frame_idx):
@@ -288,10 +270,9 @@ def main():
         output_path = Path(args.output)
     else:
         output_dir = Path(args.output_dir)
-        output_path = output_dir / f"fixed_{args.task}_{args.algo}.mp4"
+        output_path = output_dir / f"fixed_follow_target_{args.algo}.mp4"
 
     config = Choi2025Config(seed=args.seed, device=device)
-    config.env.task = TaskType(args.task)
     config.env.device = device
 
     env = SoftManipulatorEnv(config.env, device=device)
@@ -307,7 +288,7 @@ def main():
 
     print(
         f"Recording {args.num_episodes} episode(s), "
-        f"up to {max_steps} steps each (task={args.task})..."
+        f"up to {max_steps} steps each (task=follow_target)..."
     )
     rollouts = []
     total_reward = 0.0
@@ -325,17 +306,14 @@ def main():
     mean_reward = total_reward / args.num_episodes
     print(f"Mean reward: {mean_reward:.3f} over {args.num_episodes} episode(s)")
 
-    obstacles = env._obstacles if hasattr(env, "_obstacles") else None
     env.close()
 
     print("Rendering animation...")
     fig, ani = build_animation(
         rollouts,
-        task=TaskType(args.task),
         elevation=args.elevation,
         azimuth=args.azimuth,
         fps=args.fps,
-        obstacles=obstacles,
     )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -17,14 +17,10 @@ from torchrl.data import (
 )
 from torchrl.envs import EnvBase
 
-from choi2025_follow_target.config import Choi2025EnvConfig, TaskType
+from choi2025_follow_target.config import Choi2025EnvConfig
 from choi2025_follow_target.control import DeltaCurvatureController
-from choi2025_follow_target.rewards import (
-    compute_follow_target_reward,
-    compute_ik_reward,
-    compute_obstacle_reward,
-)
-from choi2025_follow_target.tasks import ObstacleManager, TargetGenerator
+from choi2025_follow_target.rewards import compute_follow_target_reward
+from choi2025_follow_target.tasks import TargetGenerator
 
 # Try importing DisMech; fall back to mock if unavailable
 try:
@@ -119,7 +115,6 @@ class SoftManipulatorEnv(EnvBase):
 
         self._rng = np.random.default_rng(42)
         self._target = TargetGenerator(self.config.target, self._rng)
-        self._obstacles = ObstacleManager(self.config.obstacles, self._rng)
 
         self._use_dismech = _HAS_DISMECH
         self._dismech_robot = None
@@ -150,8 +145,6 @@ class SoftManipulatorEnv(EnvBase):
         dim += self._num_nodes * 3  # velocities
         dim += self._num_bend_springs  # curvatures
         dim += 3  # target position
-        if self.config.task == TaskType.INVERSE_KINEMATICS:
-            dim += 3  # target orientation
         return dim
 
     def _make_spec(self):
@@ -220,16 +213,6 @@ class SoftManipulatorEnv(EnvBase):
             poisson_shell=0,
         )
 
-        has_obstacles = self.config.task in (
-            TaskType.TIGHT_OBSTACLES,
-            TaskType.RANDOM_OBSTACLES,
-        )
-        max_iter = (
-            physics.max_newton_iter_contact
-            if has_obstacles
-            else physics.max_newton_iter_noncontact
-        )
-
         sim_params = SimParams(
             static_sim=False,
             two_d_sim=physics.two_d_sim,
@@ -239,7 +222,7 @@ class SoftManipulatorEnv(EnvBase):
             log_step=1,
             show_floor=False,
             dt=physics.dt,
-            max_iter=max_iter,
+            max_iter=physics.max_newton_iter_noncontact,
             total_time=1000.0,
             plot_step=1,
             tol=physics.tol,
@@ -339,9 +322,6 @@ class SoftManipulatorEnv(EnvBase):
 
         parts = [positions, velocities, curvatures, target_pos]
 
-        if self.config.task == TaskType.INVERSE_KINEMATICS:
-            parts.append(self._target.orientation)
-
         return np.concatenate(parts).astype(np.float32)
 
     # === Apply curvature control ===
@@ -363,7 +343,6 @@ class SoftManipulatorEnv(EnvBase):
         if seed is not None:
             self._rng = np.random.default_rng(seed)
             self._target = TargetGenerator(self.config.target, self._rng)
-            self._obstacles = ObstacleManager(self.config.obstacles, self._rng)
 
     def _reset(self, tensordict: TensorDictBase = None, **kwargs) -> TensorDictBase:
         if self._use_dismech:
@@ -375,13 +354,12 @@ class SoftManipulatorEnv(EnvBase):
 
         curriculum = self.config.target.curriculum
         speed_override = None
-        if curriculum.enabled and self.config.task == TaskType.FOLLOW_TARGET:
+        if curriculum.enabled:
             progress = min(1.0, self._episode_count / max(1, curriculum.warmup_episodes))
             frac = curriculum.initial_speed_frac + (1.0 - curriculum.initial_speed_frac) * progress
             speed_override = frac * self.config.target.target_speed
 
-        self._target.sample(self.config.task, speed_override=speed_override)
-        self._obstacles.setup(self.config.task)
+        self._target.sample(speed_override=speed_override)
 
         self._step_count = 0
         self._episode_count += 1
@@ -429,8 +407,7 @@ class SoftManipulatorEnv(EnvBase):
                 except ValueError:
                     pass
 
-        if self.config.task == TaskType.FOLLOW_TARGET:
-            self._target.step(self.config.physics.dt * num_substeps)
+        self._target.step(self.config.physics.dt * num_substeps)
 
         reward = self._compute_reward()
 
@@ -459,42 +436,20 @@ class SoftManipulatorEnv(EnvBase):
     def _compute_reward(self) -> float:
         tip_pos = self._get_tip_pos()
         target_pos = self._target.position
-        task = self.config.task
 
-        if task == TaskType.FOLLOW_TARGET:
-            tip_tangent = self._get_tip_tangent() if self.config.heading_weight > 0 else None
-            reward, self._reward_components = compute_follow_target_reward(
-                tip_pos, target_pos, self._prev_tip_pos,
-                tip_tangent=tip_tangent,
-                heading_weight=self.config.heading_weight,
-                prev_dist=self._prev_dist,
-                pbrs_gamma=self.config.pbrs_gamma,
-                pbrs_only=self.config.pbrs_only,
-                improvement_weight=self.config.improvement_weight,
-                return_components=True,
-            )
-            self._prev_dist = float(np.linalg.norm(tip_pos - target_pos))
-            return reward
-
-        elif task == TaskType.INVERSE_KINEMATICS:
-            tip_tangent = self._get_tip_tangent()
-            return compute_ik_reward(
-                tip_pos, tip_tangent, target_pos, self._target.orientation
-            )
-
-        elif task in (TaskType.TIGHT_OBSTACLES, TaskType.RANDOM_OBSTACLES):
-            positions = self._get_positions()
-            penetrations = self._obstacles.compute_penetrations(positions)
-            total_pen = float(np.sum(penetrations))
-            return compute_obstacle_reward(
-                tip_pos,
-                target_pos,
-                self._prev_tip_pos,
-                total_pen,
-                self.config.obstacles.contact_penalty,
-            )
-
-        return 0.0
+        tip_tangent = self._get_tip_tangent() if self.config.heading_weight > 0 else None
+        reward, self._reward_components = compute_follow_target_reward(
+            tip_pos, target_pos, self._prev_tip_pos,
+            tip_tangent=tip_tangent,
+            heading_weight=self.config.heading_weight,
+            prev_dist=self._prev_dist,
+            pbrs_gamma=self.config.pbrs_gamma,
+            pbrs_only=self.config.pbrs_only,
+            improvement_weight=self.config.improvement_weight,
+            return_components=True,
+        )
+        self._prev_dist = float(np.linalg.norm(tip_pos - target_pos))
+        return reward
 
     def close(self, **kwargs):
         self._dismech_robot = None

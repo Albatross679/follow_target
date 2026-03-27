@@ -9,15 +9,13 @@ Hierarchy:
     Choi2025PhysicsConfig   → 3D clamped manipulator overrides
     DeltaCurvatureControlConfig → control point interpolation
     TargetConfig            → target sampling ranges
-    ObstacleConfig          → obstacle layout
-    Choi2025EnvConfig       → composes physics + control + target + obstacles
+    Choi2025EnvConfig       → composes physics + control + target
     NetworkConfig           → actor/critic architecture
     SACConfig               → SAC hyperparameters
     Choi2025Config          → top-level project config
 """
 
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import List, Optional, Tuple
 
 import json
@@ -25,20 +23,6 @@ import torch
 from dataclasses import asdict
 from pathlib import Path
 from datetime import datetime
-
-
-# ---------------------------------------------------------------------------
-# Task selection
-# ---------------------------------------------------------------------------
-
-
-class TaskType(str, Enum):
-    """Manipulation task types from Choi & Tong (2025)."""
-
-    FOLLOW_TARGET = "follow_target"
-    INVERSE_KINEMATICS = "inverse_kinematics"
-    TIGHT_OBSTACLES = "tight_obstacles"
-    RANDOM_OBSTACLES = "random_obstacles"
 
 
 # ---------------------------------------------------------------------------
@@ -186,18 +170,6 @@ class TargetConfig:
     curriculum: CurriculumConfig = field(default_factory=CurriculumConfig)
 
 
-@dataclass
-class ObstacleConfig:
-    """Obstacle configuration for obstacle avoidance tasks."""
-
-    num_obstacles: int = 3
-    obstacle_radius: float = 0.05
-    min_distance: float = 0.2
-    max_distance: float = 0.8
-    gap_width: float = 0.15
-    contact_penalty: float = 10.0
-
-
 # ---------------------------------------------------------------------------
 # Environment config
 # ---------------------------------------------------------------------------
@@ -205,14 +177,12 @@ class ObstacleConfig:
 
 @dataclass
 class Choi2025EnvConfig:
-    """Environment configuration for soft manipulator tasks."""
+    """Environment configuration for follow_target task."""
 
     physics: Choi2025PhysicsConfig = field(default_factory=Choi2025PhysicsConfig)
     control: DeltaCurvatureControlConfig = field(default_factory=DeltaCurvatureControlConfig)
     target: TargetConfig = field(default_factory=TargetConfig)
-    obstacles: ObstacleConfig = field(default_factory=ObstacleConfig)
 
-    task: TaskType = TaskType.FOLLOW_TARGET
     max_episode_steps: int = 200
     control_period: int = 2
 
@@ -581,9 +551,8 @@ class Choi2025Config(SACConfig):
     num_envs: int = 500
 
     def __post_init__(self):
-        """Set name and experiment_name from task."""
-        task = self.env.task.value if isinstance(self.env.task, TaskType) else self.env.task
-        self.name = f"fixed_{task}_sac_lr1e3_{self.num_envs}envs"
+        """Set name and experiment_name."""
+        self.name = f"fixed_follow_target_sac_lr1e3_{self.num_envs}envs"
         self.experiment_name = self.name
 
 
@@ -615,9 +584,8 @@ class Choi2025PPOConfig(PPOConfig):
     num_envs: int = 500
 
     def __post_init__(self):
-        """Set name and experiment_name from task."""
-        task = self.env.task.value if isinstance(self.env.task, TaskType) else self.env.task
-        self.name = f"fixed_{task}_ppo_lr1e4_{self.num_envs}envs"
+        """Set name and experiment_name."""
+        self.name = f"fixed_follow_target_ppo_lr1e4_{self.num_envs}envs"
         self.experiment_name = self.name
 
 
@@ -662,9 +630,8 @@ class Choi2025MMRKHSConfig(MMRKHSConfig):
     num_envs: int = 500
 
     def __post_init__(self):
-        """Set name and experiment_name from task."""
-        task = self.env.task.value if isinstance(self.env.task, TaskType) else self.env.task
-        self.name = f"fixed_{task}_mmrkhs_lr3e4_{self.num_envs}envs"
+        """Set name and experiment_name."""
+        self.name = f"fixed_follow_target_mmrkhs_lr3e4_{self.num_envs}envs"
         self.experiment_name = self.name
 
 
