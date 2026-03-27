@@ -5,7 +5,7 @@ Provides target generation and obstacle management.
 
 import numpy as np
 
-from choi2025_follow_target.config import TargetConfig
+from .config import TargetConfig
 
 
 class TargetGenerator:

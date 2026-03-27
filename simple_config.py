@@ -1,7 +1,7 @@
 """Simplified configs — only the knobs worth tuning.
 
 Usage:
-    from choi2025_follow_target.simple_config import SimpleSAC, SimplePPO, SimpleMMRKHS
+    from .simple_config import SimpleSAC, SimplePPO, SimpleMMRKHS
 
     config = SimpleSAC(num_nodes=21, total_frames=5_000_000, learning_rate=1e-3)
     config = SimplePPO(num_nodes=21, total_frames=10_000_000, learning_rate=1e-4)
@@ -13,7 +13,7 @@ Everything else inherits paper defaults from Choi & Tong (2025).
 from dataclasses import dataclass
 from typing import Optional
 
-from choi2025_follow_target.config import (
+from .config import (
     Choi2025Config,
     Choi2025PPOConfig,
     Choi2025MMRKHSConfig,

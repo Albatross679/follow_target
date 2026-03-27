@@ -17,10 +17,10 @@ from torchrl.data import (
 )
 from torchrl.envs import EnvBase
 
-from choi2025_follow_target.config import Choi2025EnvConfig
-from choi2025_follow_target.control import DeltaCurvatureController
-from choi2025_follow_target.rewards import compute_follow_target_reward
-from choi2025_follow_target.tasks import TargetGenerator
+from .config import Choi2025EnvConfig
+from .control import DeltaCurvatureController
+from .rewards import compute_follow_target_reward
+from .tasks import TargetGenerator
 
 # Try importing DisMech; fall back to mock if unavailable
 try:

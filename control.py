@@ -7,7 +7,7 @@ via a Voronoi weight matrix, yielding a smooth curvature distribution.
 
 import numpy as np
 
-from choi2025_follow_target.config import DeltaCurvatureControlConfig
+from .config import DeltaCurvatureControlConfig
 
 
 class DeltaCurvatureController:

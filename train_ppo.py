@@ -20,16 +20,16 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 from torchrl.envs import RewardSum
 from torchrl.envs.transforms import ObservationNorm
 
-from choi2025_follow_target.config import (
+from .config import (
     Choi2025PPOConfig,
     Choi2025EnvConfig,
     CurriculumConfig,
     resolve_device,
     setup_run_dir,
 )
-from choi2025_follow_target.env import SoftManipulatorEnv
-from choi2025_follow_target.train_sac import parse_wall_time
-from choi2025_follow_target.trainer_ppo import PPOTrainer
+from .env import SoftManipulatorEnv
+from .train_sac import parse_wall_time
+from .trainer_ppo import PPOTrainer
 
 
 def _make_env(env_config, device):

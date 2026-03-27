@@ -21,9 +21,9 @@ from torchrl.data import ReplayBuffer, LazyTensorStorage
 from tensordict import TensorDict
 from tqdm import tqdm
 
-from choi2025_follow_target.config import SACConfig, NetworkConfig, resolve_device, setup_run_dir
-from choi2025_follow_target.networks import create_actor, TwinQNetwork
-from choi2025_follow_target import wandb_utils
+from .config import SACConfig, NetworkConfig, resolve_device, setup_run_dir
+from .networks import create_actor, TwinQNetwork
+from . import wandb_utils
 
 
 # Default STOP file path

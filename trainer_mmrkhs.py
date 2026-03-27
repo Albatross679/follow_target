@@ -36,9 +36,9 @@ from torchrl.modules import TanhNormal
 from tensordict import TensorDict
 from tqdm import tqdm
 
-from choi2025_follow_target.config import MMRKHSConfig, NetworkConfig, resolve_device, setup_run_dir
-from choi2025_follow_target.networks import create_actor, create_critic
-from choi2025_follow_target import wandb_utils
+from .config import MMRKHSConfig, NetworkConfig, resolve_device, setup_run_dir
+from .networks import create_actor, create_critic
+from . import wandb_utils
 
 
 STOP_FILE = "STOP"

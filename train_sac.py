@@ -20,15 +20,15 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 from torchrl.envs import RewardSum
 
-from choi2025_follow_target.config import (
+from .config import (
     Choi2025Config,
     Choi2025EnvConfig,
     resolve_device,
     setup_run_dir,
     Console,
 )
-from choi2025_follow_target.env import SoftManipulatorEnv
-from choi2025_follow_target.trainer_sac import SACTrainer
+from .env import SoftManipulatorEnv
+from .trainer_sac import SACTrainer
 
 
 def _make_env(env_config, device):

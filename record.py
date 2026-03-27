@@ -22,14 +22,14 @@ import numpy as np
 import torch
 from matplotlib.animation import FuncAnimation
 
-from choi2025_follow_target.config import (
+from .config import (
     Choi2025Config,
     Choi2025NetworkConfig,
     Choi2025PPONetworkConfig,
     resolve_device,
 )
-from choi2025_follow_target.env import SoftManipulatorEnv
-from choi2025_follow_target.networks import create_actor
+from .env import SoftManipulatorEnv
+from .networks import create_actor
 
 
 def parse_args() -> argparse.Namespace:

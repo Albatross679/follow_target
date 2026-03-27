@@ -26,7 +26,7 @@ except ImportError:
     from torchrl.data import Bounded as BoundedTensorSpec, Composite as CompositeSpec
 from tensordict.nn import TensorDictModule, TensorDictSequential
 
-from choi2025_follow_target.config import ActorConfig, CriticConfig
+from .config import ActorConfig, CriticConfig
 
 
 # ---------------------------------------------------------------------------
