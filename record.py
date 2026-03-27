@@ -49,8 +49,8 @@ def parse_args() -> argparse.Namespace:
         "--algo",
         type=str,
         default="sac",
-        choices=["sac", "ppo"],
-        help="Algorithm used to train the checkpoint (sac or ppo)",
+        choices=["sac", "ppo", "mmrkhs"],
+        help="Algorithm used to train the checkpoint (sac, ppo, or mmrkhs)",
     )
     parser.add_argument(
         "--checkpoint", type=str, default=None, help="Path to trained .pt checkpoint"

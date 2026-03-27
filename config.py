@@ -461,6 +461,73 @@ class PPOConfig:
 
 
 # ---------------------------------------------------------------------------
+# MM-RKHS training config
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class MMRKHSConfig:
+    """MM-RKHS configuration (Gupta & Mahajan, 2026, arXiv:2603.17875)."""
+
+    name: str = "experiment"
+    seed: int = 42
+    device: str = "auto"
+
+    # Training duration
+    total_frames: int = 1_000_000
+    max_wall_time: Optional[float] = None
+    frames_per_batch: int = 4096
+
+    # Optimization
+    learning_rate: float = 3e-4
+    max_grad_norm: float = 0.5
+    weight_decay: float = 0.0
+    num_epochs: int = 10
+    mini_batch_size: int = 256
+    gamma: float = 0.99
+
+    # MM-RKHS specific
+    beta: float = 1.0
+    eta: float = 1.0
+    mmd_kernel: str = "rbf"
+    mmd_bandwidth: float = 1.0
+    mmd_num_samples: int = 16
+
+    # Notebook mechanics (opt-in)
+    eta_schedule: bool = False
+    eta_exponent: float = 2.0
+    beta_schedule: bool = False
+    inner_mm_iterations: int = 1
+    exponent_clip: float = 20.0
+    kernel_correction: bool = False
+    kernel_correction_weight: float = 1.0
+
+    # GAE
+    gae_lambda: float = 0.95
+    normalize_advantage: bool = True
+
+    # Critic
+    value_coef: float = 0.5
+
+    # Learning rate schedule
+    lr_schedule: str = "linear"
+    lr_end: float = 1e-5
+
+    # Early stopping
+    patience_batches: int = 200
+
+    # Mixed precision
+    use_amp: bool = False
+
+    # Logging
+    log_interval: int = 1
+    save_interval: int = 100
+
+    # Parallelism
+    num_envs: int = 1
+
+
+# ---------------------------------------------------------------------------
 # Top-level configs
 # ---------------------------------------------------------------------------
 
@@ -542,6 +609,53 @@ class Choi2025PPOConfig(PPOConfig):
         """Set name and experiment_name from task."""
         task = self.env.task.value if isinstance(self.env.task, TaskType) else self.env.task
         self.name = f"fixed_{task}_ppo_lr1e4_{self.num_envs}envs"
+        self.experiment_name = self.name
+
+
+@dataclass
+class Choi2025MMRKHSConfig(MMRKHSConfig):
+    """Top-level config for soft manipulator MM-RKHS training."""
+
+    name: str = "choi2025_mmrkhs"
+    experiment_name: str = "choi2025_mmrkhs"
+
+    total_frames: int = 5_000_000
+    learning_rate: float = 3e-4
+    num_epochs: int = 10
+    mini_batch_size: int = 1024
+    frames_per_batch: int = 8192
+    gae_lambda: float = 0.95
+    normalize_advantage: bool = True
+    patience_batches: int = 0
+
+    # MM-RKHS specific
+    beta: float = 1.0
+    eta: float = 1.0
+    mmd_bandwidth: float = 1.0
+    mmd_num_samples: int = 16
+    value_coef: float = 0.5
+
+    # Notebook mechanics (enabled by default)
+    eta_schedule: bool = True
+    eta_exponent: float = 2.0
+    beta_schedule: bool = True
+    inner_mm_iterations: int = 3
+    exponent_clip: float = 2.0
+    kernel_correction: bool = True
+    kernel_correction_weight: float = 1.0
+
+    env: Choi2025EnvConfig = field(default_factory=Choi2025EnvConfig)
+    network: Choi2025NetworkConfig = field(default_factory=Choi2025NetworkConfig)
+    wandb: WandB = field(default_factory=lambda: WandB(project="choi2025-follow-target"))
+    output: Output = field(default_factory=Output)
+    console: Console = field(default_factory=Console)
+
+    num_envs: int = 500
+
+    def __post_init__(self):
+        """Set name and experiment_name from task."""
+        task = self.env.task.value if isinstance(self.env.task, TaskType) else self.env.task
+        self.name = f"fixed_{task}_mmrkhs_lr3e4_{self.num_envs}envs"
         self.experiment_name = self.name
 
 
